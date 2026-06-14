@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>SporTiser — CDM 2026</title>
+<title>ZoneStat — CDM 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg:#f3f4f7;--surface:#ffffff;--ink:#10141c;--ink2:#6b7280;--ink3:#9aa1ad;
@@ -22,7 +23,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14p
 .logo-tag{font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:.14em;text-transform:uppercase;margin-right:24px;margin-bottom:-1px;align-self:flex-end;border-left:1px solid var(--line2);padding-left:10px}
 .nav-btn{padding:0 16px;height:var(--nav-h);font-size:13px;font-weight:500;color:var(--ink3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;border-radius:0;letter-spacing:.02em}
 .nav-btn.active{color:var(--ink);border-bottom-color:var(--blue)}
-.nav-right{margin-left:auto;font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:.14em;text-transform:uppercase}
+.nav-right{margin-left:auto;font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;gap:14px}
+
+.account-btn{font-family:var(--sans);font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-pale);border:none;border-radius:var(--r-sm);padding:8px 14px;cursor:pointer;letter-spacing:.02em;text-transform:none}
+.account-btn:hover{opacity:.85}
+.account-btn.premium{color:var(--green);background:var(--green-pale)}
 
 .page{display:none;position:fixed;top:var(--nav-h);left:0;right:0;bottom:var(--bot-h)}
 #page-matchs.active{display:flex}
@@ -168,7 +173,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14p
 @media(max-width:640px){
   :root{--bot-h:60px}
   .nav-btn{display:none}
-  .nav-right{display:none}
   .odds-bar{padding:14px 16px}
   .odds-cell{padding:8px 8px;gap:6px}
   .odds-lbl{font-size:10.5px}
@@ -207,6 +211,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14p
   .premium-overlay{padding:24px 18px}
   .premium-title{font-size:15px}
   .premium-sub{font-size:12.5px}
+  .nav-right{gap:8px}
+  .logo-tag{display:none}
 }
 
 .premium-wrap{position:relative;border-radius:var(--r);overflow:hidden}
@@ -217,22 +223,58 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14p
 .premium-sub{font-size:13px;color:var(--ink2);max-width:360px;line-height:1.6;margin-bottom:6px}
 .premium-cta{font-family:var(--sans);font-weight:700;font-size:14px;color:#fff;background:var(--blue);border:none;border-radius:var(--r-sm);padding:13px 28px;cursor:pointer;letter-spacing:.02em;transition:opacity .15s}
 .premium-cta:hover{opacity:.88}
+.premium-cta:disabled{opacity:.5;cursor:default}
+.premium-hint{font-size:11.5px;color:var(--ink3);margin-top:4px}
+.premium-hint a{color:var(--blue);cursor:pointer;text-decoration:underline}
+
+/* ── Auth modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(16,20,28,.45);z-index:500;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border-radius:var(--r);padding:28px 26px;width:100%;max-width:380px;position:relative}
+.modal-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:var(--ink3);cursor:pointer;line-height:1;padding:4px}
+.modal-title{font-family:var(--serif);font-weight:800;font-size:19px;margin-bottom:4px}
+.modal-sub{font-size:12.5px;color:var(--ink3);margin-bottom:18px}
+.modal-tabs{display:flex;gap:6px;background:var(--bg);border-radius:var(--r-sm);padding:4px;margin-bottom:18px}
+.modal-tab{flex:1;font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--ink3);background:none;border:none;border-radius:6px;padding:8px 0;cursor:pointer}
+.modal-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.field-label{font-size:11.5px;font-weight:600;color:var(--ink2);margin-bottom:5px;display:block}
+.field-input{width:100%;font-family:var(--sans);font-size:13.5px;padding:11px 12px;border:1px solid var(--line2);border-radius:var(--r-sm);background:var(--bg);color:var(--ink);margin-bottom:14px}
+.field-input:focus{outline:2px solid var(--blue-pale2);border-color:var(--blue)}
+.modal-submit{width:100%;font-family:var(--sans);font-weight:700;font-size:14px;color:#fff;background:var(--blue);border:none;border-radius:var(--r-sm);padding:12px 0;cursor:pointer;transition:opacity .15s}
+.modal-submit:hover{opacity:.88}
+.modal-submit:disabled{opacity:.5;cursor:default}
+.modal-msg{font-size:12px;margin-top:12px;text-align:center;line-height:1.6}
+.modal-msg.error{color:var(--red)}
+.modal-msg.success{color:var(--green)}
+
+/* ── Account panel ── */
+.account-box{padding:6px 2px}
+.account-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.account-row:last-of-type{border-bottom:none;margin-bottom:16px}
+.account-row span:first-child{color:var(--ink3)}
+.account-status{font-weight:700}
+.account-status.is-premium{color:var(--green)}
+.account-status.is-free{color:var(--ink3)}
 </style>
 </head>
 
 <body>
 
 <div id="nav">
-  <span class="logo">SporTiser</span>
+  <span class="logo">ZoneStat</span>
   <span class="logo-tag">CDM 2026</span>
   <button class="nav-btn active" data-page="matchs">Matchs</button>
   <button class="nav-btn" data-page="groupes">Groupes</button>
-  <span class="nav-right">USA · CAN · MEX</span>
+  <span class="nav-right">
+    <span class="usa-can-mex">USA · CAN · MEX</span>
+    <button class="account-btn" id="account-btn">Connexion</button>
+  </span>
 </div>
 
 <div id="bottom-nav">
   <button class="bnav-btn active" data-page="matchs"><span class="bnav-icon">⚽</span><span>Matchs</span></button>
   <button class="bnav-btn" data-page="groupes"><span class="bnav-icon">📋</span><span>Groupes</span></button>
+  <button class="bnav-btn" id="account-btn-mobile"><span class="bnav-icon">👤</span><span>Compte</span></button>
 </div>
 
 <div id="page-matchs" class="page active">
@@ -255,9 +297,182 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14p
   <div class="groups-grid" id="groups-content"></div>
 </div>
 
+<!-- ── Auth modal ── -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    <div id="auth-logged-out">
+      <div class="modal-title">Bienvenue sur ZoneStat</div>
+      <div class="modal-sub">Connecte-toi pour accéder à ton compte et tes statistiques premium.</div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-authtab="login" onclick="switchAuthTab('login')">Se connecter</button>
+        <button class="modal-tab" data-authtab="signup" onclick="switchAuthTab('signup')">Créer un compte</button>
+      </div>
+      <form id="auth-form">
+        <label class="field-label">Email</label>
+        <input class="field-input" type="email" id="auth-email" required autocomplete="email">
+        <label class="field-label">Mot de passe</label>
+        <input class="field-input" type="password" id="auth-password" required autocomplete="current-password" minlength="6">
+        <button class="modal-submit" type="submit" id="auth-submit-btn">Se connecter</button>
+      </form>
+      <div class="modal-msg" id="auth-msg"></div>
+    </div>
+    <div id="auth-logged-in" style="display:none">
+      <div class="modal-title">Mon compte</div>
+      <div class="account-box">
+        <div class="account-row"><span>Email</span><span id="account-email">—</span></div>
+        <div class="account-row"><span>Statut</span><span class="account-status" id="account-status">—</span></div>
+      </div>
+      <button class="modal-submit" id="logout-btn" style="background:var(--ink3)" onclick="handleLogout()">Se déconnecter</button>
+      <div class="modal-msg" id="account-msg"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 var isMobile = window.innerWidth <= 640;
 window.addEventListener('resize', function(){ isMobile = window.innerWidth <= 640; });
+
+// ════════════════════════════════════════════════════════════
+// SUPABASE — configuration et authentification
+// ════════════════════════════════════════════════════════════
+var SUPABASE_URL = 'https://vtztvwszfcgxadgxqray.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_8z0QyLPN8MZHIhiMGQnGdg_TSsfgGWE';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Lien de paiement Stripe (sera lié au compte via l'email pré-rempli)
+var STRIPE_LINK = 'https://buy.stripe.com/bJe9ANbSJ1dyfyg9IIbQY01';
+
+var currentUser = null;   // objet user Supabase (ou null si déconnecté)
+var IS_PREMIUM = false;   // mis à jour après vérification du profil
+
+// Vérifie la session au chargement
+async function initAuth(){
+  var sess = await sb.auth.getSession();
+  if(sess.data.session){
+    currentUser = sess.data.session.user;
+    await refreshPremiumStatus();
+  }
+  updateAccountUI();
+
+  // Écoute les changements de session (connexion, déconnexion, retour après paiement, etc.)
+  sb.auth.onAuthStateChange(async function(event, session){
+    currentUser = session ? session.user : null;
+    if(currentUser){ await refreshPremiumStatus(); } else { IS_PREMIUM = false; }
+    updateAccountUI();
+    if(__selectedMatchId !== null) showMatch(__selectedMatchId, true);
+  });
+}
+
+// Récupère is_premium depuis la table "profiles"
+async function refreshPremiumStatus(){
+  if(!currentUser) { IS_PREMIUM = false; return; }
+  try{
+    var res = await sb.from('profiles').select('is_premium').eq('id', currentUser.id).single();
+    if(res.data) IS_PREMIUM = !!res.data.is_premium;
+    else IS_PREMIUM = false;
+  }catch(e){
+    IS_PREMIUM = false;
+  }
+}
+
+function updateAccountUI(){
+  var btn = document.getElementById('account-btn');
+  if(currentUser){
+    btn.textContent = IS_PREMIUM ? '⭐ Premium' : currentUser.email.split('@')[0];
+    btn.classList.toggle('premium', IS_PREMIUM);
+  } else {
+    btn.textContent = 'Connexion';
+    btn.classList.remove('premium');
+  }
+}
+
+function openAuthModal(){
+  document.getElementById('auth-modal').classList.add('open');
+  document.getElementById('auth-msg').textContent = '';
+  if(currentUser){
+    document.getElementById('auth-logged-out').style.display = 'none';
+    document.getElementById('auth-logged-in').style.display = 'block';
+    document.getElementById('account-email').textContent = currentUser.email;
+    var st = document.getElementById('account-status');
+    if(IS_PREMIUM){ st.textContent = '⭐ Premium actif'; st.className = 'account-status is-premium'; }
+    else { st.textContent = 'Compte gratuit'; st.className = 'account-status is-free'; }
+  } else {
+    document.getElementById('auth-logged-out').style.display = 'block';
+    document.getElementById('auth-logged-in').style.display = 'none';
+  }
+}
+function closeAuthModal(){
+  document.getElementById('auth-modal').classList.remove('open');
+}
+
+function switchAuthTab(tab){
+  document.querySelectorAll('.modal-tab').forEach(function(b){b.classList.toggle('active', b.dataset.authtab===tab);});
+  document.getElementById('auth-submit-btn').textContent = tab==='login' ? 'Se connecter' : 'Créer un compte';
+  document.getElementById('auth-form').dataset.mode = tab;
+  document.getElementById('auth-msg').textContent = '';
+}
+
+document.getElementById('auth-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var mode = this.dataset.mode || 'login';
+  var email = document.getElementById('auth-email').value.trim();
+  var password = document.getElementById('auth-password').value;
+  var msg = document.getElementById('auth-msg');
+  var btn = document.getElementById('auth-submit-btn');
+  btn.disabled = true;
+  msg.className = 'modal-msg';
+  msg.textContent = '';
+
+  try{
+    if(mode === 'signup'){
+      var res = await sb.auth.signUp({ email: email, password: password });
+      if(res.error) throw res.error;
+      if(res.data.user && !res.data.session){
+        msg.className = 'modal-msg success';
+        msg.textContent = 'Compte créé ! Vérifie ta boîte mail pour confirmer ton adresse.';
+      } else {
+        closeAuthModal();
+      }
+    } else {
+      var res2 = await sb.auth.signInWithPassword({ email: email, password: password });
+      if(res2.error) throw res2.error;
+      closeAuthModal();
+    }
+  }catch(err){
+    msg.className = 'modal-msg error';
+    msg.textContent = err.message || 'Une erreur est survenue.';
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+async function handleLogout(){
+  await sb.auth.signOut();
+  closeAuthModal();
+}
+
+document.getElementById('account-btn').addEventListener('click', openAuthModal);
+document.getElementById('account-btn-mobile').addEventListener('click', openAuthModal);
+document.getElementById('auth-modal').addEventListener('click', function(e){
+  if(e.target.id === 'auth-modal') closeAuthModal();
+});
+
+// Construit l'URL Stripe avec l'email pré-rempli pour faciliter le lien compte ↔ paiement
+function getStripeLink(){
+  if(currentUser && currentUser.email){
+    return STRIPE_LINK + '?prefilled_email=' + encodeURIComponent(currentUser.email);
+  }
+  return STRIPE_LINK;
+}
+
+function goToPremium(){
+  if(!currentUser){
+    openAuthModal();
+    return;
+  }
+  window.open(getStripeLink(), '_blank');
+}
 
 // Stats par défaut pour les matchs sans données détaillées
 function defaultStats(xgH, xgA) {
@@ -348,10 +563,6 @@ var MATCH_DATA = {
     players:{home:[{name:'K. Mbappé',pos:'ATT',status:'ok',goals:57,cap:98},{name:'A. Griezmann',pos:'ATT',status:'ok',goals:56,cap:137},{name:'A. Tchouaméni',pos:'MIL',status:'ok',goals:8,cap:47},{name:'M. Camavinga',pos:'MIL',status:'ok',goals:5,cap:38},{name:'M. Maignan',pos:'GK',status:'ok',goals:0,cap:37},{name:'B. Konaté',pos:'DEF',status:'dout',goals:3,cap:35}],away:[{name:'S. Mané',pos:'ATT',status:'ok',goals:38,cap:96},{name:'I. Gueye',pos:'MIL',status:'ok',goals:4,cap:92},{name:'K. Kouyaté',pos:'DEF',status:'ok',goals:8,cap:74},{name:'E. Mendy',pos:'GK',status:'ok',goals:0,cap:51},{name:'N. Mendy',pos:'DEF',status:'ok',goals:3,cap:39},{name:'B. Diallo',pos:'ATT',status:'inj',goals:11,cap:31}]}
   }
 };
-
-// Statut d'abonnement de l'utilisateur — à connecter plus tard à Supabase/Stripe.
-// false = visiteur gratuit (contenu premium flouté), true = abonné (accès complet).
-var IS_PREMIUM = false;
 
 var MATCHES = [
   // ── GROUPE A ──
@@ -651,16 +862,28 @@ function showMatch(id,isRefresh){
       '<div class="buts-grid">'+butsHtml+'</div>'+
     '</div>';
 
-  var premiumBlock = IS_PREMIUM
-    ? tabsContentHtml
-    : '<div class="premium-wrap"><div class="premium-blur">'+tabsContentHtml+'</div>'+
+  var premiumBlock;
+  if(IS_PREMIUM){
+    premiumBlock = tabsContentHtml;
+  } else {
+    var ctaHtml, hintHtml = '';
+    if(!currentUser){
+      ctaHtml = '<button class="premium-cta" onclick="goToPremium()">Se connecter / Passer Premium</button>';
+      hintHtml = '<div class="premium-hint">Tu as déjà payé ? <a onclick="openAuthModal()">Connecte-toi</a> avec l\'email utilisé lors du paiement.</div>';
+    } else {
+      ctaHtml = '<button class="premium-cta" onclick="goToPremium()">Passer Premium</button>';
+      hintHtml = '<div class="premium-hint">Déjà payé ? Le déblocage peut prendre 1-2 minutes — <a onclick="location.reload()">recharge la page</a>.</div>';
+    }
+    premiumBlock = '<div class="premium-wrap"><div class="premium-blur">'+tabsContentHtml+'</div>'+
         '<div class="premium-overlay">'+
           '<div class="premium-lock">🔒</div>'+
           '<div class="premium-title">Statistiques avancées réservées aux abonnés</div>'+
           '<div class="premium-sub">Matrice de scores exacts, BTTS, top buteurs, confrontations directes et bien plus — débloquez tout avec Premium.</div>'+
-          '<button class="premium-cta" onclick="window.location.href=\'https://buy.stripe.com/bJe9ANbSJ1dyfyg9IIbQY01\'">Passer Premium</button>'+
+          ctaHtml+
+          hintHtml+
         '</div>'+
       '</div>';
+  }
 
   document.getElementById('main-panel').innerHTML=
     '<button id="back-btn" onclick="closePanel()">← Retour</button>'+
@@ -710,6 +933,7 @@ document.querySelectorAll('.nav-btn[data-page],.bnav-btn[data-page]').forEach(fu
 document.getElementById('group-filter').addEventListener('change',function(){renderMatchList(this.value);});
 
 renderMatchList();
+initAuth();
 
 // Rafraîchissement "en direct" : actualise statuts/scores toutes les 60s
 setInterval(function(){
