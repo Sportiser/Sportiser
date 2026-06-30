@@ -459,60 +459,87 @@ footer{background:var(--surface);border-top:1px solid var(--line);padding:30px 2
 </footer>
 
 <script>
-// Score réel France-Sénégal : 3-1
-var REAL_SCORE = {home: 3, away: 1};
+(function () {
+  "use strict";
 
-function ppf(lam,k){if(k<0)return 0;var lp=-lam+k*Math.log(lam);for(var i=1;i<=k;i++)lp-=Math.log(i);return Math.exp(lp);}
+  // Score réel France-Sénégal : 3-1
+  var REAL_SCORE = { home: 3, away: 1 };
 
-// Une seule matrice de référence 5x5 — les deux affichages piochent dedans
-// => % identiques pour chaque score dans les deux sections
-function buildMatrix(lH,lA,maxH,maxA){
-  var mat=[],total=0;
-  for(var h=0;h<=maxH;h++){mat[h]=[];for(var a=0;a<=maxA;a++){var p=ppf(lH,h)*ppf(lA,a);mat[h][a]=p;total+=p;}}
-  for(var h=0;h<=maxH;h++)for(var a=0;a<=maxA;a++)mat[h][a]=Math.round(mat[h][a]/total*1000)/10;
-  return mat;
-}
-
-function cellClass(r,prefix){
-  if(r>0.65)return prefix+'hot';
-  if(r>0.28)return prefix+'warm';
-  if(r>0.08)return prefix+'cool';
-  return prefix+'cold';
-}
-
-// Calcul unique partagé — grille 5x5 (0 à 4)
-var SHARED_MAT = buildMatrix(2.3, 1.0, 4, 4);
-var SHARED_MAX = 0;
-for(var h=0;h<=4;h++) for(var a=0;a<=4;a++) if(SHARED_MAT[h][a]>SHARED_MAX) SHARED_MAX=SHARED_MAT[h][a];
-
-// MATRICE HERO — affiche 0-4 x 0-4
-(function(){
-  var html='';
-  for(var h=0;h<=4;h++){
-    html+='<tr><th class="rh" style="font-size:9.5px;color:rgba(255,255,255,.7);text-align:right;padding-right:8px;font-weight:600">'+h+'</th>';
-    for(var a=0;a<=4;a++){
-      var p=SHARED_MAT[h][a], r=p/SHARED_MAX;
-      var isReal=(h===REAL_SCORE.home&&a===REAL_SCORE.away)?' mc-actual':'';
-      html+='<td class="mc '+cellClass(r,'mc-')+isReal+'"><span class="mc-score">'+h+'–'+a+'</span><span class="mc-pct">'+p+'%</span></td>';
-    }
-    html+='</tr>';
+  function poissonPmf(lam, k) {
+    if (k < 0) return 0;
+    var logP = -lam + k * Math.log(lam);
+    for (var i = 1; i <= k; i++) logP -= Math.log(i);
+    return Math.exp(logP);
   }
-  document.getElementById('matrix-body').innerHTML=html;
-})();
 
-// MATRICE SECTION SCORES EXACTS — affiche 0-3 x 0-3, mêmes % que la hero
-(function(){
-  var html='';
-  for(var h=0;h<=3;h++){
-    html+='<tr><th class="rh" style="font-size:8.5px;color:rgba(255,255,255,.3);text-align:right;padding-right:8px;font-weight:600">'+h+'</th>';
-    for(var a=0;a<=3;a++){
-      var p=SHARED_MAT[h][a], r=p/SHARED_MAX;
-      var isReal=(h===REAL_SCORE.home&&a===REAL_SCORE.away)?' dc-actual':'';
-      html+='<td class="dc '+cellClass(r,'dc-')+isReal+'"><span class="dc-score">'+h+'–'+a+'</span><span class="dc-pct">'+p+'%</span></td>';
+  // Une seule matrice de référence — les deux affichages piochent dedans
+  function buildMatrix(lH, lA, maxH, maxA) {
+    var mat = [], total = 0, h, a, p;
+    for (h = 0; h <= maxH; h++) {
+      mat[h] = [];
+      for (a = 0; a <= maxA; a++) {
+        p = poissonPmf(lH, h) * poissonPmf(lA, a);
+        mat[h][a] = p;
+        total += p;
+      }
     }
-    html+='</tr>';
+    for (h = 0; h <= maxH; h++) {
+      for (a = 0; a <= maxA; a++) {
+        mat[h][a] = Math.round((mat[h][a] / total) * 1000) / 10;
+      }
+    }
+    return mat;
   }
-  document.getElementById('dark-matrix-body').innerHTML=html;
+
+  function cellClass(r, prefix) {
+    if (r > 0.65) return prefix + 'hot';
+    if (r > 0.28) return prefix + 'warm';
+    if (r > 0.08) return prefix + 'cool';
+    return prefix + 'cold';
+  }
+
+  function renderMatrix(targetId, mat, max, maxH, maxA, cellTag, prefix, headerStyle) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
+    var html = '';
+    for (var h = 0; h <= maxH; h++) {
+      html += '<tr><th class="rh" style="' + headerStyle + '">' + h + '</th>';
+      for (var a = 0; a <= maxA; a++) {
+        var p = mat[h][a];
+        var r = max > 0 ? p / max : 0;
+        var isReal = (h === REAL_SCORE.home && a === REAL_SCORE.away) ? ' ' + prefix + 'actual' : '';
+        html += '<td class="' + cellTag + ' ' + cellClass(r, prefix) + isReal + '">' +
+                  '<span class="' + prefix + 'score">' + h + '\u2013' + a + '</span>' +
+                  '<span class="' + prefix + 'pct">' + p + '%</span>' +
+                '</td>';
+      }
+      html += '</tr>';
+    }
+    el.innerHTML = html;
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Calcul unique partagé — grille 5x5 (0 à 4)
+    var sharedMat = buildMatrix(2.3, 1.0, 4, 4);
+    var sharedMax = 0;
+    for (var h = 0; h <= 4; h++) {
+      for (var a = 0; a <= 4; a++) {
+        if (sharedMat[h][a] > sharedMax) sharedMax = sharedMat[h][a];
+      }
+    }
+
+    // MATRICE HERO — affiche 0-4 x 0-4
+    renderMatrix(
+      'matrix-body', sharedMat, sharedMax, 4, 4, 'mc', 'mc-',
+      'font-size:9.5px;color:rgba(255,255,255,.7);text-align:right;padding-right:8px;font-weight:600'
+    );
+
+    // MATRICE SECTION SCORES EXACTS — affiche 0-3 x 0-3, mêmes % que la hero
+    renderMatrix(
+      'dark-matrix-body', sharedMat, sharedMax, 3, 3, 'dc', 'dc-',
+      'font-size:8.5px;color:rgba(255,255,255,.3);text-align:right;padding-right:8px;font-weight:600'
+    );
+  });
 })();
 </script>
 </body>
